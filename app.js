@@ -75,7 +75,6 @@ function loadNote(dateObj){
   dateTitle.textContent = pretty;
   statusEl.textContent = (key === todayKey) ? "Today" : "";
 
-  // set image src
   const src = `${NOTES_FOLDER}/${key}.${EXT}`;
   helperEl.style.display = "none";
   imgEl.src = src;
@@ -94,6 +93,59 @@ function loadNote(dateObj){
     imgEl.removeAttribute("src");
   };
 
-  imgEl.onload = () =>
+  imgEl.onload = () => {
+    helperEl.style.display = "none";
+  };
+
+  nextBtn.disabled = (key === todayKey);
+  nextBtn.style.opacity = nextBtn.disabled ? 0.4 : 1;
+}
 
 
+// ---- NAV ----
+prevBtn.addEventListener("click", () => loadNote(addDays(current, -1)));
+nextBtn.addEventListener("click", () => loadNote(addDays(current,  1)));
+
+jumpToday.addEventListener("click", (e) => {
+  e.preventDefault();
+  loadNote(new Date());
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft")  loadNote(addDays(current, -1));
+  if (e.key === "ArrowRight") loadNote(addDays(current,  1));
+});
+
+
+// ---- ARCHIVE ----
+toggleArchiveBtn.addEventListener("click", () => {
+  const isOpen = archivePanel.style.display !== "none";
+  archivePanel.style.display = isOpen ? "none" : "block";
+});
+
+function buildArchive(){
+  archiveList.innerHTML = "";
+
+  const end = new Date(); // today
+  let d = new Date(start);
+
+  while (d <= end){
+    const key = toKey(d);
+
+    const btn = document.createElement("button");
+    btn.textContent = key;
+
+    btn.addEventListener("click", () => {
+      loadNote(parseKey(key));
+      archivePanel.style.display = "none";
+    });
+
+    archiveList.appendChild(btn);
+    d = addDays(d, 1);
+  }
+}
+
+
+// ---- INIT ----
+buildArchive();
+loadNote(new Date());
