@@ -3,7 +3,7 @@
 const START_DATE = "2026-02-20"; // YYYY-MM-DD
 
 // File type you export from Canva:
-const EXT = "jpg"; // change to "png" if you export PNGs
+const EXT = "png"; // change to "png" if you export PNGs
 
 // Folder where notes are stored:
 const NOTES_FOLDER = "notes";
