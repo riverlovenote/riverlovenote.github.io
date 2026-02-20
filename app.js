@@ -56,12 +56,32 @@ const archiveList  = document.getElementById("archiveList");
 const toggleArchiveBtn = document.getElementById("toggleArchive");
 const jumpToday = document.getElementById("jumpToday");
 
+// Zoom modal DOM
+const zoomOverlay = document.getElementById("zoomOverlay");
+const zoomImg = document.getElementById("zoomImg");
+const zoomClose = document.getElementById("zoomClose");
+
 
 // ---- CORE ----
 function setMissing(key) {
   helperEl.style.display = "block";
   helperEl.textContent = `No note uploaded for ${key} yet.`;
   imgEl.removeAttribute("src");
+}
+
+function openZoom(){
+  if (!imgEl.src) return;
+  zoomImg.src = imgEl.src;
+  zoomOverlay.classList.add("open");
+  zoomOverlay.setAttribute("aria-hidden","false");
+  document.body.style.overflow = "hidden";
+}
+
+function closeZoom(){
+  zoomOverlay.classList.remove("open");
+  zoomOverlay.setAttribute("aria-hidden","true");
+  zoomImg.removeAttribute("src");
+  document.body.style.overflow = "";
 }
 
 function loadNote(dateObj) {
@@ -110,6 +130,16 @@ jumpToday.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft")  loadNote(addDays(current, -1));
   if (e.key === "ArrowRight") loadNote(addDays(current,  1));
+  if (e.key === "Escape") closeZoom();
+});
+
+// Tap image to zoom
+imgEl.addEventListener("click", openZoom);
+
+// Close zoom
+zoomClose.addEventListener("click", closeZoom);
+zoomOverlay.addEventListener("click", (e) => {
+  if (e.target === zoomOverlay) closeZoom();
 });
 
 
