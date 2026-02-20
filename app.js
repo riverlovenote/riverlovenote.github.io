@@ -1,42 +1,38 @@
-// app.js
+// app.js — Daily Love Notes (GitHub Pages)
 
 // ---- SETTINGS YOU EDIT ----
-// Earliest day you want accessible in the archive (your first uploaded note):
-const START_DATE = "2026-02-19"; // YYYY-MM-DD
-
-// File type you export from Canva:
-const EXT = "png"; // "png" or "jpg"
-
-// Folder where notes are stored:
-const NOTES_FOLDER = "notes";
+const START_DATE = "2026-02-19"; // earliest note available (YYYY-MM-DD)
+const EXT = "png";               // "png" or "jpg"
+const NOTES_FOLDER = "notes";    // folder name
 
 
 // ---- HELPERS ----
-function pad(n){ return String(n).padStart(2, "0"); }
+function pad(n) { return String(n).padStart(2, "0"); }
 
-function toKey(d){
-  // returns YYYY-MM-DD (local time)
+function toKey(d) {
   const y = d.getFullYear();
-  const m = pad(d.getMonth()+1);
+  const m = pad(d.getMonth() + 1);
   const day = pad(d.getDate());
   return `${y}-${m}-${day}`;
 }
 
-function parseKey(key){
-  // key = YYYY-MM-DD -> Date (local)
-  const [y,m,d] = key.split("-").map(Number);
-  return new Date(y, m-1, d);
+function parseKey(key) {
+  const parts = key.split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-function addDays(date, days){
+function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
 }
 
-function formatPretty(d){
+function formatPretty(d) {
   return d.toLocaleDateString(undefined, {
-    weekday:"long", year:"numeric", month:"long", day:"numeric"
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
   });
 }
 
@@ -44,7 +40,6 @@ function formatPretty(d){
 // ---- STATE ----
 let current = new Date(); // local today
 const start = parseKey(START_DATE);
-const todayKey = toKey(new Date());
 
 
 // ---- DOM ----
@@ -62,35 +57,36 @@ const toggleArchiveBtn = document.getElementById("toggleArchive");
 const jumpToday = document.getElementById("jumpToday");
 
 
-// ---- CORE: load note for a date ----
-function loadNote(dateObj){
-  // clamp to start date (don’t go earlier)
-  if (dateObj < start) dateObj = new Date(start);
+// ---- CORE ----
+function setMissing(key) {
+  helperEl.style.display = "block";
+  helperEl.textContent = `No note uploaded for ${key} yet.`;
+  imgEl.removeAttribute("src");
+}
 
+function loadNote(dateObj) {
+  if (dateObj < start) dateObj = new Date(start);
   current = dateObj;
 
   const key = toKey(current);
-  const pretty = formatPretty(current);
+  const todayKey = toKey(new Date());
 
-  dateTitle.textContent = pretty;
+  dateTitle.textContent = formatPretty(current);
   statusEl.textContent = (key === todayKey) ? "Today" : "";
 
   const src = `${NOTES_FOLDER}/${key}.${EXT}`;
   helperEl.style.display = "none";
   imgEl.src = src;
 
-  // If image missing, auto-fallback to previous day until START_DATE
   imgEl.onerror = () => {
     const startKey = toKey(start);
 
+    // If today's note isn't uploaded yet, fall back to previous day (until START_DATE)
     if (key !== startKey) {
       loadNote(addDays(current, -1));
       return;
     }
-
-    helperEl.style.display = "block";
-    helperEl.textContent = `No note uploaded for ${key} yet.`;
-    imgEl.removeAttribute("src");
+    setMissing(key);
   };
 
   imgEl.onload = () => {
@@ -123,13 +119,13 @@ toggleArchiveBtn.addEventListener("click", () => {
   archivePanel.style.display = isOpen ? "none" : "block";
 });
 
-function buildArchive(){
+function buildArchive() {
   archiveList.innerHTML = "";
 
   const end = new Date(); // today
   let d = new Date(start);
 
-  while (d <= end){
+  while (d <= end) {
     const key = toKey(d);
 
     const btn = document.createElement("button");
