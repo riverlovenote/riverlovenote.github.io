@@ -1,1 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Love Notes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Daily Love Notes</h1>
+        <div class="sub">Today loads automatically. Use the arrows to revisit past days.</div>
+      </div>
+      <div class="top-actions">
+        <a class="btn" href="#" id="jumpToday">Today</a>
+        <button id="toggleArchive">Archive</button>
+      </div>
+    </header>
+
+    <div class="card viewer">
+      <button class="navBtn" id="prevBtn" aria-label="Previous day">←</button>
+
+      <div class="noteArea">
+        <div class="meta">
+          <div class="dateTitle" id="dateTitle">Loading…</div>
+          <div class="status" id="status"></div>
+        </div>
+
+        <img class="noteImg" id="noteImg" alt="Love note for the day" />
+
+        <div class="helper" id="helper">
+          If you don’t see today’s note, it may not be uploaded yet.
+        </div>
+      </div>
+
+      <button class="navBtn" id="nextBtn" aria-label="Next day">→</button>
+    </div>
+
+    <div class="card archive" id="archivePanel" style="display:none;">
+      <h2>Archive</h2>
+      <div class="list" id="archiveList"></div>
+    </div>
+
+    <div class="footer">Made with love. One note at a time.</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
 
