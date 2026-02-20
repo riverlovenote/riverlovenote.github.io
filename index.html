@@ -1,10 +1,14 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>River's Daily Love Notes</title>
+
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Dancing+Script:wght@500;600&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -47,7 +51,13 @@
     <div class="footer">Made with love. One note at a time.</div>
   </div>
 
+  <!-- Tap-to-zoom overlay -->
+  <div class="zoomOverlay" id="zoomOverlay" aria-hidden="true">
+    <button class="zoomClose" id="zoomClose">Close</button>
+    <img class="zoomImg" id="zoomImg" alt="Zoomed love note">
+    <div class="zoomHint">Tap anywhere outside the note to close</div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
-
