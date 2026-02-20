@@ -1,9 +1,11 @@
+// app.js
+
 // ---- SETTINGS YOU EDIT ----
-// The earliest day you want accessible in the archive:
-const START_DATE = "2026-02-20"; // YYYY-MM-DD
+// Earliest day you want accessible in the archive (your first uploaded note):
+const START_DATE = "2026-02-19"; // YYYY-MM-DD
 
 // File type you export from Canva:
-const EXT = "png"; // change to "png" if you export PNGs
+const EXT = "png"; // "png" or "jpg"
 
 // Folder where notes are stored:
 const NOTES_FOLDER = "notes";
@@ -33,7 +35,9 @@ function addDays(date, days){
 }
 
 function formatPretty(d){
-  return d.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+  return d.toLocaleDateString(undefined, {
+    weekday:"long", year:"numeric", month:"long", day:"numeric"
+  });
 }
 
 
@@ -64,79 +68,32 @@ function loadNote(dateObj){
   if (dateObj < start) dateObj = new Date(start);
 
   current = dateObj;
+
   const key = toKey(current);
   const pretty = formatPretty(current);
 
   dateTitle.textContent = pretty;
-
-  // mark if it's today
   statusEl.textContent = (key === todayKey) ? "Today" : "";
 
   // set image src
   const src = `${NOTES_FOLDER}/${key}.${EXT}`;
+  helperEl.style.display = "none";
   imgEl.src = src;
 
-  // If image missing, show message
-  helperEl.style.display = "none";
+  // If image missing, auto-fallback to previous day until START_DATE
   imgEl.onerror = () => {
+    const startKey = toKey(start);
+
+    if (key !== startKey) {
+      loadNote(addDays(current, -1));
+      return;
+    }
+
     helperEl.style.display = "block";
     helperEl.textContent = `No note uploaded for ${key} yet.`;
-    // Optional: show a placeholder background
     imgEl.removeAttribute("src");
   };
 
-  imgEl.onload = () => {
-    helperEl.style.display = "none";
-  };
+  imgEl.onload = () =>
 
-  // disable next button if trying to go beyond today (optional)
-  nextBtn.disabled = (key === todayKey);
-  nextBtn.style.opacity = nextBtn.disabled ? 0.4 : 1;
-}
-
-// ---- NAV ----
-prevBtn.addEventListener("click", () => loadNote(addDays(current, -1)));
-nextBtn.addEventListener("click", () => loadNote(addDays(current,  1)));
-
-jumpToday.addEventListener("click", (e) => {
-  e.preventDefault();
-  loadNote(new Date());
-});
-
-// Keyboard arrows (nice touch)
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft")  loadNote(addDays(current, -1));
-  if (e.key === "ArrowRight") loadNote(addDays(current,  1));
-});
-
-
-// ---- ARCHIVE ----
-toggleArchiveBtn.addEventListener("click", () => {
-  const isOpen = archivePanel.style.display !== "none";
-  archivePanel.style.display = isOpen ? "none" : "block";
-});
-
-function buildArchive(){
-  archiveList.innerHTML = "";
-
-  const end = new Date(); // today
-  let d = new Date(start);
-
-  while (d <= end){
-    const key = toKey(d);
-    const btn = document.createElement("button");
-    btn.textContent = key;
-    btn.addEventListener("click", () => {
-      loadNote(parseKey(key));
-      archivePanel.style.display = "none";
-    });
-    archiveList.appendChild(btn);
-    d = addDays(d, 1);
-  }
-}
-
-
-// ---- INIT ----
-buildArchive();
-loadNote(new Date());
 
