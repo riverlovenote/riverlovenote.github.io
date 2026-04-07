@@ -60,7 +60,7 @@ const jumpToday = document.getElementById("jumpToday");
 // ---- CORE ----
 function setMissing(key) {
   helperEl.style.display = "block";
-  helperEl.textContent = `No note uploaded for ${key} yet.`;
+  helperEl.textContent = `No notes have been uploaded for today yet.`;
   imgEl.removeAttribute("src");
 }
 
@@ -68,9 +68,9 @@ async function loadManifest() {
   try {
     const res = await fetch(`${NOTES_FOLDER}/index.json`, { cache: "no-store" });
     if (!res.ok) throw new Error("Manifest not found");
+
     availableNotes = await res.json();
 
-    // keep only dates on/after START_DATE, sorted ascending
     availableNotes = availableNotes
       .filter((key) => parseKey(key) >= start)
       .sort();
@@ -82,18 +82,6 @@ async function loadManifest() {
 
 function getNoteIndex(key) {
   return availableNotes.indexOf(key);
-}
-
-function getLatestAvailableOnOrBefore(targetDate) {
-  const targetKey = toKey(targetDate);
-
-  for (let i = availableNotes.length - 1; i >= 0; i--) {
-    if (availableNotes[i] <= targetKey) {
-      return availableNotes[i];
-    }
-  }
-
-  return availableNotes.length ? availableNotes[0] : null;
 }
 
 function updateNavButtons() {
@@ -109,7 +97,9 @@ function updateNavButtons() {
 
 function loadNoteByKey(key) {
   if (!key) {
-    setMissing("this date");
+    helperEl.style.display = "block";
+    helperEl.textContent = "No notes uploaded yet.";
+    imgEl.removeAttribute("src");
     dateTitle.textContent = "";
     statusEl.textContent = "";
     prevBtn.disabled = true;
@@ -129,7 +119,9 @@ function loadNoteByKey(key) {
   imgEl.src = `${NOTES_FOLDER}/${key}.${EXT}`;
 
   imgEl.onerror = () => {
-    setMissing(key);
+    helperEl.style.display = "block";
+    helperEl.textContent = `Could not load note for ${key}.`;
+    imgEl.removeAttribute("src");
   };
 
   imgEl.onload = () => {
@@ -139,9 +131,30 @@ function loadNoteByKey(key) {
   updateNavButtons();
 }
 
-function loadClosestNote(dateObj) {
-  const key = getLatestAvailableOnOrBefore(dateObj);
+function loadToday() {
+  const today = new Date();
+  const key = toKey(today);
+
+  current = today;
+  dateTitle.textContent = formatPretty(today);
+  statusEl.textContent = "Today";
+
+  if (!availableNotes.includes(key)) {
+    setMissing(key);
+    updateNavButtons();
+    return;
+  }
+
   loadNoteByKey(key);
+}
+
+function loadLatestAvailable() {
+  if (!availableNotes.length) {
+    loadNoteByKey(null);
+    return;
+  }
+
+  loadNoteByKey(availableNotes[availableNotes.length - 1]);
 }
 
 
@@ -162,7 +175,7 @@ nextBtn.addEventListener("click", () => {
 
 jumpToday.addEventListener("click", (e) => {
   e.preventDefault();
-  loadClosestNote(new Date());
+  loadToday();
 });
 
 document.addEventListener("keydown", (e) => {
@@ -236,5 +249,11 @@ function buildArchive() {
 (async function init() {
   await loadManifest();
   buildArchive();
-  loadClosestNote(new Date());
+
+  const todayKey = toKey(new Date());
+  if (availableNotes.includes(todayKey)) {
+    loadToday();
+  } else {
+    loadLatestAvailable();
+  }
 })();
