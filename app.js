@@ -1,9 +1,9 @@
 // app.js — Daily Love Notes (GitHub Pages)
 
 // ---- SETTINGS YOU EDIT ----
-const START_DATE = "2026-02-19"; // earliest possible note date
-const EXT = "png";               // "png" or "jpg"
-const NOTES_FOLDER = "notes";    // folder name
+const START_DATE = "2026-02-19";
+const EXT = "png";
+const NOTES_FOLDER = "notes";
 
 
 // ---- HELPERS ----
@@ -37,6 +37,7 @@ function formatPretty(d) {
 let current = new Date();
 const start = parseKey(START_DATE);
 let availableNotes = [];
+let showingMissingToday = false;
 
 
 // ---- DOM ----
@@ -57,11 +58,28 @@ const toggleArchiveBtn = document.getElementById("toggleArchive");
 const jumpToday = document.getElementById("jumpToday");
 
 
-// ---- CORE ----
-function setMissing(key) {
-  helperEl.style.display = "block";
-  helperEl.textContent = `No notes have been uploaded for today yet.`;
+// ---- CORE UI ----
+function showImageUI() {
+  imgEl.style.display = "block";
+  if (tapHintEl) tapHintEl.style.display = "block";
+  helperEl.style.display = "none";
+}
+
+function showMissingUI(message) {
   imgEl.removeAttribute("src");
+  imgEl.style.display = "none";
+  if (tapHintEl) tapHintEl.style.display = "none";
+  helperEl.style.display = "block";
+  helperEl.textContent = message;
+}
+
+function resetExpandedIfNeeded() {
+  if (viewerEl.classList.contains("expanded")) {
+    viewerEl.classList.remove("expanded");
+  }
+  if (tapHintEl) {
+    tapHintEl.textContent = "Tap the note to expand";
+  }
 }
 
 async function loadManifest() {
@@ -70,7 +88,6 @@ async function loadManifest() {
     if (!res.ok) throw new Error("Manifest not found");
 
     availableNotes = await res.json();
-
     availableNotes = availableNotes
       .filter((key) => parseKey(key) >= start)
       .sort();
@@ -84,7 +101,19 @@ function getNoteIndex(key) {
   return availableNotes.indexOf(key);
 }
 
+function getLatestNoteKey() {
+  return availableNotes.length ? availableNotes[availableNotes.length - 1] : null;
+}
+
 function updateNavButtons() {
+  if (showingMissingToday) {
+    prevBtn.disabled = availableNotes.length === 0;
+    nextBtn.disabled = true;
+    prevBtn.style.opacity = prevBtn.disabled ? 0.4 : 1;
+    nextBtn.style.opacity = 0.4;
+    return;
+  }
+
   const key = toKey(current);
   const idx = getNoteIndex(key);
 
@@ -96,12 +125,13 @@ function updateNavButtons() {
 }
 
 function loadNoteByKey(key) {
+  resetExpandedIfNeeded();
+  showingMissingToday = false;
+
   if (!key) {
-    helperEl.style.display = "block";
-    helperEl.textContent = "No notes uploaded yet.";
-    imgEl.removeAttribute("src");
     dateTitle.textContent = "";
     statusEl.textContent = "";
+    showMissingUI("No notes uploaded yet.");
     prevBtn.disabled = true;
     nextBtn.disabled = true;
     prevBtn.style.opacity = 0.4;
@@ -113,53 +143,57 @@ function loadNoteByKey(key) {
   const todayKey = toKey(new Date());
 
   dateTitle.textContent = formatPretty(current);
-  statusEl.textContent = (key === todayKey) ? "Today" : "";
+  statusEl.textContent = key === todayKey ? "Today" : "";
 
-  helperEl.style.display = "none";
+  showImageUI();
   imgEl.src = `${NOTES_FOLDER}/${key}.${EXT}`;
 
   imgEl.onerror = () => {
-    helperEl.style.display = "block";
-    helperEl.textContent = `Could not load note for ${key}.`;
-    imgEl.removeAttribute("src");
+    showMissingUI(`Could not load note for ${key}.`);
   };
 
   imgEl.onload = () => {
-    helperEl.style.display = "none";
+    showImageUI();
   };
 
   updateNavButtons();
 }
 
 function loadToday() {
+  resetExpandedIfNeeded();
+
   const today = new Date();
-  const key = toKey(today);
+  const todayKey = toKey(today);
 
   current = today;
+  showingMissingToday = false;
+
   dateTitle.textContent = formatPretty(today);
   statusEl.textContent = "Today";
 
-  if (!availableNotes.includes(key)) {
-    setMissing(key);
+  if (!availableNotes.includes(todayKey)) {
+    showingMissingToday = true;
+    showMissingUI("No notes have been uploaded for today yet.");
     updateNavButtons();
     return;
   }
 
-  loadNoteByKey(key);
+  loadNoteByKey(todayKey);
 }
 
 function loadLatestAvailable() {
-  if (!availableNotes.length) {
-    loadNoteByKey(null);
-    return;
-  }
-
-  loadNoteByKey(availableNotes[availableNotes.length - 1]);
+  const latestKey = getLatestNoteKey();
+  loadNoteByKey(latestKey);
 }
 
 
 // ---- NAV ----
 prevBtn.addEventListener("click", () => {
+  if (showingMissingToday) {
+    loadLatestAvailable();
+    return;
+  }
+
   const idx = getNoteIndex(toKey(current));
   if (idx > 0) {
     loadNoteByKey(availableNotes[idx - 1]);
@@ -167,6 +201,8 @@ prevBtn.addEventListener("click", () => {
 });
 
 nextBtn.addEventListener("click", () => {
+  if (showingMissingToday) return;
+
   const idx = getNoteIndex(toKey(current));
   if (idx !== -1 && idx < availableNotes.length - 1) {
     loadNoteByKey(availableNotes[idx + 1]);
@@ -196,6 +232,8 @@ document.addEventListener("keydown", (e) => {
 
 // ---- In-page expand toggle ----
 function toggleExpand() {
+  if (imgEl.style.display === "none" || !imgEl.getAttribute("src")) return;
+
   viewerEl.classList.toggle("expanded");
   const isExpanded = viewerEl.classList.contains("expanded");
 
@@ -210,6 +248,7 @@ imgEl.addEventListener("click", toggleExpand);
 imgEl.addEventListener(
   "touchend",
   (e) => {
+    if (imgEl.style.display === "none" || !imgEl.getAttribute("src")) return;
     e.preventDefault();
     toggleExpand();
   },
@@ -249,11 +288,5 @@ function buildArchive() {
 (async function init() {
   await loadManifest();
   buildArchive();
-
-  const todayKey = toKey(new Date());
-  if (availableNotes.includes(todayKey)) {
-    loadToday();
-  } else {
-    loadLatestAvailable();
-  }
+  loadToday();
 })();
