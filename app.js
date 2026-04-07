@@ -1,118 +1,195 @@
-// ===== CONFIG =====
-const START_DATE = new Date("2024-01-01"); // change if needed
-const IMAGE_PATH = "notes/"; // folder where images live
-const EXT = ".png"; // change if using png/webp
+// app.js — Daily Love Notes (GitHub Pages)
 
-// ===== ELEMENTS =====
-const dateTitle = document.getElementById("dateTitle");
-const status = document.getElementById("status");
-const noteImg = document.getElementById("noteImg");
-const archiveList = document.getElementById("archiveList");
+// ---- SETTINGS YOU EDIT ----
+const START_DATE = "2026-02-19"; // earliest note available (YYYY-MM-DD)
+const EXT = "png";               // "png" or "jpg"
+const NOTES_FOLDER = "notes";    // folder name
 
-const prevBtn = document.getElementById("prevBtn");
-const nextBtn = document.getElementById("nextBtn");
-const jumpToday = document.getElementById("jumpToday");
 
-// ===== STATE =====
-let currentDate = new Date();
-let availableDates = [];
+// ---- HELPERS ----
+function pad(n) { return String(n).padStart(2, "0"); }
 
-// ===== HELPERS =====
-function formatDate(date){
-  return date.toISOString().split("T")[0];
+function toKey(d) {
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  return `${y}-${m}-${day}`;
 }
 
-function displayDate(date){
-  return date.toDateString();
+function parseKey(key) {
+  const parts = key.split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-// Check if image exists
-function checkImage(dateStr){
-  return new Promise((resolve)=>{
-    const img = new Image();
-    img.src = `${IMAGE_PATH}${dateStr}${EXT}`;
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
+function formatPretty(d) {
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
   });
 }
 
-// ===== LOAD ALL AVAILABLE NOTES =====
-async function loadAvailableDates(){
-  const today = new Date();
-  let temp = new Date(START_DATE);
+function fileExists(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
 
-  availableDates = [];
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
 
-  while(temp <= today){
-    const dStr = formatDate(temp);
-    const exists = await checkImage(dStr);
-
-    if(exists){
-      availableDates.push(dStr);
-    }
-
-    temp.setDate(temp.getDate() + 1);
-  }
-
-  buildArchive();
+    img.src = url;
+  });
 }
 
-// ===== BUILD ARCHIVE =====
-function buildArchive(){
+
+// ---- STATE ----
+let current = new Date(); // local today
+const start = parseKey(START_DATE);
+
+
+// ---- DOM ----
+const viewerEl = document.getElementById("viewer");
+const tapHintEl = document.getElementById("tapHint");
+
+const dateTitle = document.getElementById("dateTitle");
+const statusEl  = document.getElementById("status");
+const imgEl     = document.getElementById("noteImg");
+const helperEl  = document.getElementById("helper");
+
+const prevBtn   = document.getElementById("prevBtn");
+const nextBtn   = document.getElementById("nextBtn");
+
+const archivePanel = document.getElementById("archivePanel");
+const archiveList  = document.getElementById("archiveList");
+const toggleArchiveBtn = document.getElementById("toggleArchive");
+const jumpToday = document.getElementById("jumpToday");
+
+
+// ---- CORE ----
+function setMissing(key) {
+  helperEl.style.display = "block";
+  helperEl.textContent = `No note uploaded for ${key} yet.`;
+  imgEl.removeAttribute("src");
+}
+
+function loadNote(dateObj) {
+  if (dateObj < start) dateObj = new Date(start);
+  current = dateObj;
+
+  const key = toKey(current);
+  const todayKey = toKey(new Date());
+
+  dateTitle.textContent = formatPretty(current);
+  statusEl.textContent = (key === todayKey) ? "Today" : "";
+
+  const src = `${NOTES_FOLDER}/${key}.${EXT}`;
+  helperEl.style.display = "none";
+  imgEl.src = src;
+
+  imgEl.onerror = () => {
+    setMissing(key);
+  };
+
+  imgEl.onload = () => {
+    helperEl.style.display = "none";
+  };
+
+  nextBtn.disabled = (key === todayKey);
+  nextBtn.style.opacity = nextBtn.disabled ? 0.4 : 1;
+}
+
+
+// ---- NAV ----
+prevBtn.addEventListener("click", () => loadNote(addDays(current, -1)));
+nextBtn.addEventListener("click", () => loadNote(addDays(current,  1)));
+
+jumpToday.addEventListener("click", (e) => {
+  e.preventDefault();
+  loadNote(new Date());
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft")  loadNote(addDays(current, -1));
+  if (e.key === "ArrowRight") loadNote(addDays(current,  1));
+
+  if (e.key === "Escape" && viewerEl.classList.contains("expanded")) {
+    viewerEl.classList.remove("expanded");
+    if (tapHintEl) tapHintEl.textContent = "Tap the note to expand";
+  }
+});
+
+
+// ---- In-page expand toggle ----
+function toggleExpand() {
+  viewerEl.classList.toggle("expanded");
+  const isExpanded = viewerEl.classList.contains("expanded");
+
+  if (tapHintEl) {
+    tapHintEl.textContent = isExpanded ? "Tap again to shrink" : "Tap the note to expand";
+  }
+}
+
+// Click + mobile tap
+imgEl.addEventListener("click", toggleExpand);
+imgEl.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  toggleExpand();
+}, { passive: false });
+
+
+// ---- ARCHIVE ----
+toggleArchiveBtn.addEventListener("click", () => {
+  const isOpen = archivePanel.style.display !== "none";
+  archivePanel.style.display = isOpen ? "none" : "block";
+});
+
+async function buildArchive() {
+  archiveList.innerHTML = "";
+  archiveList.textContent = "Loading archive...";
+
+  const end = new Date(); // today
+  let d = new Date(start);
+  const validDates = [];
+
+  while (d <= end) {
+    const key = toKey(d);
+    const src = `${NOTES_FOLDER}/${key}.${EXT}`;
+    const exists = await fileExists(src);
+
+    if (exists) {
+      validDates.push(key);
+    }
+
+    d = addDays(d, 1);
+  }
+
   archiveList.innerHTML = "";
 
-  availableDates.forEach(dateStr=>{
-    const btn = document.createElement("button");
-    btn.textContent = dateStr;
+  if (validDates.length === 0) {
+    archiveList.textContent = "No notes uploaded yet.";
+    return;
+  }
 
-    btn.onclick = ()=>{
-      currentDate = new Date(dateStr);
-      render();
-    };
+  validDates.reverse().forEach((key) => {
+    const btn = document.createElement("button");
+    btn.textContent = key;
+
+    btn.addEventListener("click", () => {
+      loadNote(parseKey(key));
+      archivePanel.style.display = "none";
+    });
 
     archiveList.appendChild(btn);
   });
 }
 
-// ===== RENDER NOTE =====
-async function render(){
-  const dStr = formatDate(currentDate);
 
-  dateTitle.textContent = displayDate(currentDate);
-
-  const exists = await checkImage(dStr);
-
-  if(exists){
-    noteImg.src = `${IMAGE_PATH}${dStr}${EXT}`;
-    noteImg.style.display = "block";
-
-    status.textContent = "Uploaded 💌";
-  } else {
-    noteImg.style.display = "none";
-
-    status.textContent = "No note uploaded yet for " + dStr;
-  }
-}
-
-// ===== NAVIGATION =====
-prevBtn.onclick = ()=>{
-  currentDate.setDate(currentDate.getDate() - 1);
-  render();
-};
-
-nextBtn.onclick = ()=>{
-  currentDate.setDate(currentDate.getDate() + 1);
-  render();
-};
-
-jumpToday.onclick = ()=>{
-  currentDate = new Date();
-  render();
-};
-
-// ===== INIT =====
-(async function(){
-  await loadAvailableDates();
-  render();
-})();
+// ---- INIT ----
+buildArchive();
+loadNote(new Date());
